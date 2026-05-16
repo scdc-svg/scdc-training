@@ -62,7 +62,7 @@
       <div class="login-screen">
         <div class="login-card">
           <h1>SCDC Training</h1>
-          <p class="subtitle">Building Fundamentals & Revit Operations</p>
+          <p class="subtitle">Discover How Buildings Come to Life — With Technology</p>
           <input type="text" id="login-name" placeholder="Enter your name to begin" autocomplete="off" />
           <button class="btn-primary" id="btn-login">Start Learning</button>
           <div class="admin-link" id="admin-toggle">Admin Dashboard</div>
@@ -286,6 +286,24 @@
       "completed": "Completed"
     };
 
+    // Motivation box
+    let motivationHTML = "";
+    if (section.motivation) {
+      motivationHTML = `
+        <div class="motivation-box">
+          <p class="motivation-quote">${section.motivation.quote}</p>
+        </div>
+      `;
+      if (section.motivation.futureConnect) {
+        motivationHTML += `
+          <div class="future-connect-box">
+            <div class="fc-label">🚀 Technology & Your Future</div>
+            <p class="fc-text">${section.motivation.futureConnect}</p>
+          </div>
+        `;
+      }
+    }
+
     let daysHTML = "";
     section.days.forEach(day => {
       const topicsLi = day.topics.map(t => `<li>${t}</li>`).join("");
@@ -300,17 +318,19 @@
     let resourcesHTML = "";
     if (section.resources && section.resources.length > 0) {
       const items = section.resources.map(r => {
-        const iconMap = { video: "▶", article: "📄", playlist: "☰" };
+        const iconMap = { video: "▶", article: "📄", playlist: "☰", inspiration: "🚀" };
+        const langBadge = r.lang ? `<span class="resource-lang">${r.lang}</span>` : "";
         return `
           <a class="resource-item" href="${r.url}" target="_blank" rel="noopener">
             <span class="resource-icon ${r.type}">${iconMap[r.type] || "🔗"}</span>
             <span class="resource-title">${r.title}</span>
+            ${langBadge}
           </a>
         `;
       }).join("");
       resourcesHTML = `
         <div class="resources-section">
-          <h4>📚 Learning Resources</h4>
+          <h4>📚 Learning Resources — Watch, Read & Get Inspired</h4>
           <div class="resource-list">${items}</div>
         </div>
       `;
@@ -334,6 +354,7 @@
           <span class="status-badge ${status}">${statusLabels[status]}</span>
         </div>
         <div class="section-detail hidden">
+          ${motivationHTML}
           ${daysHTML}
           ${resourcesHTML}
           <div style="display:flex;align-items:center;gap:12px;margin-top:20px;flex-wrap:wrap;">

@@ -755,6 +755,68 @@ body {
   margin-top: 2px;
 }
 
+/* ── Motivation Box ── */
+.motivation-box {
+  background: linear-gradient(135deg, #E8F8F5 0%, #D5F5E3 100%);
+  border-left: 4px solid var(--teal);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+
+.motivation-box .motivation-quote {
+  font-size: 15px;
+  font-style: italic;
+  color: var(--gray-700);
+  line-height: 1.6;
+  margin-bottom: 0;
+}
+
+.motivation-box .motivation-quote::before { content: "\201C"; font-size: 20px; color: var(--teal); margin-right: 4px; }
+.motivation-box .motivation-quote::after { content: "\201D"; font-size: 20px; color: var(--teal); margin-left: 2px; }
+
+/* ── Future Connect Box ── */
+.future-connect-box {
+  background: linear-gradient(135deg, #EDE7F6 0%, #E8EAF6 100%);
+  border-left: 4px solid var(--purple);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+
+.future-connect-box .fc-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--purple);
+  margin-bottom: 8px;
+}
+
+.future-connect-box .fc-text {
+  font-size: 14px;
+  color: var(--gray-700);
+  line-height: 1.6;
+}
+
+/* ── Resource type: inspiration ── */
+.resource-icon.inspiration { background: linear-gradient(135deg, var(--purple), #E74C3C); }
+
+/* ── Resource language badge ── */
+.resource-lang {
+  font-size: 11px;
+  color: var(--gray-500);
+  background: var(--gray-100);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .login-card { padding: 32px 24px; margin: 0 16px; }
