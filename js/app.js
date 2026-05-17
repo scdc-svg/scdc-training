@@ -1,12 +1,12 @@
 // ═══════════════════════════════════════════
 // SCDC Training Portal — Main Application
+// REDESIGNED: Visual Handbook format with content blocks
 // ═══════════════════════════════════════════
 
 (function () {
   "use strict";
 
   // ── Firebase Config ──
-  // Replace these with your Firebase project config
   const FIREBASE_CONFIG = {
     apiKey: "YOUR_API_KEY",
     authDomain: "YOUR_PROJECT.firebaseapp.com",
@@ -27,7 +27,6 @@
 
   // ── Initialize ──
   function init() {
-    // Try Firebase
     try {
       if (typeof firebase !== "undefined" && FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY") {
         firebase.initializeApp(FIREBASE_CONFIG);
@@ -38,17 +37,12 @@
       console.log("Firebase not configured — using local storage only.");
     }
 
-    // Check saved session
     const saved = localStorage.getItem("scdc_user");
     if (saved) {
       const data = JSON.parse(saved);
       currentUser = data.name;
       isAdmin = data.isAdmin || false;
-      if (isAdmin) {
-        showDashboard();
-      } else {
-        showCourse();
-      }
+      if (isAdmin) { showDashboard(); } else { showCourse(); }
     } else {
       showLogin();
     }
@@ -62,7 +56,7 @@
       <div class="login-screen">
         <div class="login-card">
           <h1>SCDC Training</h1>
-          <p class="subtitle">Discover How Buildings Come to Life — With Technology</p>
+          <p class="subtitle">Learn to Work With Real Building Drawings — Step by Step</p>
           <input type="text" id="login-name" placeholder="Enter your name to begin" autocomplete="off" />
           <button class="btn-primary" id="btn-login">Start Learning</button>
           <div class="admin-link" id="admin-toggle">Admin Dashboard</div>
@@ -93,11 +87,7 @@
     localStorage.setItem("scdc_user", JSON.stringify({ name, isAdmin }));
     logActivity("login", `${name} logged in`);
 
-    if (isAdmin) {
-      showDashboard();
-    } else {
-      showCourse();
-    }
+    if (isAdmin) { showDashboard(); } else { showCourse(); }
   }
 
   function logout() {
@@ -116,15 +106,12 @@
 
   function saveProgress(weekId, data) {
     const key = getUserKey();
-
-    // Local
     const local = JSON.parse(localStorage.getItem("scdc_progress") || "{}");
     if (!local[key]) local[key] = { name: currentUser, weeks: {} };
     local[key].weeks[weekId] = { ...((local[key].weeks[weekId]) || {}), ...data };
     local[key].lastActive = new Date().toISOString();
     localStorage.setItem("scdc_progress", JSON.stringify(local));
 
-    // Firebase
     if (firebaseAvailable && db) {
       db.ref(`progress/${key}/weeks/${weekId}`).update(data);
       db.ref(`progress/${key}/name`).set(currentUser);
@@ -240,11 +227,30 @@
       });
     });
 
+    // Day accordion
+    document.querySelectorAll(".day-header").forEach(dh => {
+      dh.addEventListener("click", () => {
+        const dayBlock = dh.parentElement;
+        const content = dayBlock.querySelector(".day-content");
+        const isExpanded = dayBlock.classList.contains("expanded");
+        dayBlock.classList.toggle("expanded");
+        if (content) {
+          content.style.display = isExpanded ? "none" : "block";
+        }
+      });
+    });
+
+    // Video support toggle
+    document.querySelectorAll(".video-support-header").forEach(vh => {
+      vh.addEventListener("click", () => {
+        vh.parentElement.classList.toggle("expanded");
+      });
+    });
+
     document.querySelectorAll(".btn-quiz").forEach(btn => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        const weekId = btn.dataset.week;
-        startQuiz(weekId);
+        startQuiz(btn.dataset.week);
       });
     });
 
@@ -263,21 +269,94 @@
     const weekData = (progress.weeks || {})[weekId] || {};
     if (weekData.quizScore >= PASS_THRESHOLD) return "completed";
     if (weekData.contentRead || weekData.quizScore !== undefined) return "in-progress";
-    // First section is always available
     if (index === 0) return "available";
-    // Check if previous section is completed
     const allSections = [];
     COURSE_DATA.phases.forEach(p => p.sections.forEach(s => allSections.push(s.id)));
     if (index > 0) {
       const prevId = allSections[index - 1];
       const prevData = (progress.weeks || {})[prevId] || {};
       if (prevData.quizScore >= PASS_THRESHOLD) return "available";
-      // Also make available if user has started it (more lenient for self-guided)
       if (prevData.contentRead) return "available";
     }
-    return "available"; // Make all sections available for self-guided learning
+    return "available";
   }
 
+  // ═══════════════════════════════════════
+  // RENDER CONTENT BLOCKS
+  // ═══════════════════════════════════════
+  function renderContentBlock(block) {
+    switch (block.type) {
+      case "text":
+        return `<div class="cb-text">${block.text}</div>`;
+
+      case "heading":
+        return `<div class="cb-heading">${block.text}</div>`;
+
+      case "keyterm":
+        return `
+          <div class="cb-keyterm">
+            <span class="cb-keyterm-word">${block.term}</span>
+            <span class="cb-keyterm-def">${block.definition}</span>
+          </div>
+        `;
+
+      case "diagram":
+        const caption = block.caption ? `<div class="cb-diagram-caption">${block.caption}</div>` : "";
+        return `<div class="cb-diagram">${block.svg}${caption}</div>`;
+
+      case "image":
+        const imgCaption = block.caption ? `<div class="cb-image-caption">${block.caption}</div>` : "";
+        return `
+          <div class="cb-image">
+            <img src="${block.src}" alt="${block.alt || ''}" loading="lazy" onerror="this.parentElement.style.display='none'" />
+            ${imgCaption}
+          </div>
+        `;
+
+      case "example":
+        return `
+          <div class="cb-example">
+            <span class="cb-example-icon">👀</span>
+            <span class="cb-example-text">${block.text}</span>
+          </div>
+        `;
+
+      case "task":
+        return `
+          <div class="cb-task">
+            <span class="cb-task-icon">✎</span>
+            <span class="cb-task-text">${block.text}</span>
+          </div>
+        `;
+
+      case "tip":
+        return `
+          <div class="cb-tip">
+            <span class="cb-tip-icon">💡</span>
+            <span class="cb-tip-text">${block.text}</span>
+          </div>
+        `;
+
+      case "callout":
+        return `<div class="cb-callout">${block.text}</div>`;
+
+      case "steps":
+        const stepsHTML = block.items.map((item, i) => `
+          <div class="cb-step">
+            <span class="cb-step-num">${i + 1}</span>
+            <div class="cb-step-content"><p>${item}</p></div>
+          </div>
+        `).join("");
+        return `<div class="cb-steps">${stepsHTML}</div>`;
+
+      default:
+        return `<div class="cb-text">${block.text || ""}</div>`;
+    }
+  }
+
+  // ═══════════════════════════════════════
+  // RENDER SECTION — Visual Handbook Layout
+  // ═══════════════════════════════════════
   function renderSection(section, phase, status, weekProgress) {
     const statusLabels = {
       "locked": "Locked",
@@ -304,34 +383,61 @@
       }
     }
 
+    // Day blocks — accordion style with content blocks
     let daysHTML = "";
-    section.days.forEach(day => {
-      const topicsLi = day.topics.map(t => `<li>${t}</li>`).join("");
+    section.days.forEach((day, dayIndex) => {
+      let contentHTML = "";
+
+      if (day.content && day.content.length > 0) {
+        // NEW: Rich content blocks
+        contentHTML = day.content.map(block => renderContentBlock(block)).join("");
+      } else if (day.topics && day.topics.length > 0) {
+        // FALLBACK: Old-style topic bullets (for weeks 3-8 until they are migrated)
+        contentHTML = `<ul style="list-style:none;padding:0;">${day.topics.map(t => `<li style="padding:4px 0 4px 20px;position:relative;font-size:14px;color:var(--gray-700);line-height:1.6;"><span style="position:absolute;left:0;color:var(--teal);font-weight:bold;">▸</span>${t}</li>`).join("")}</ul>`;
+      }
+
+      const expandedClass = dayIndex === 0 ? "expanded" : "";
+
       daysHTML += `
-        <div class="day-block">
-          <h4><span class="day-label">${day.day}</span> ${day.title}</h4>
-          <ul>${topicsLi}</ul>
+        <div class="day-block ${expandedClass}">
+          <div class="day-header">
+            <span class="day-label">${day.day}</span>
+            <h4>${day.title}</h4>
+            <span class="day-chevron">▼</span>
+          </div>
+          <div class="day-content" ${dayIndex === 0 ? '' : 'style="display:none"'}>
+            ${contentHTML}
+          </div>
         </div>
       `;
     });
 
-    let resourcesHTML = "";
+    // Video support — collapsible optional section
+    let videosHTML = "";
     if (section.resources && section.resources.length > 0) {
-      const items = section.resources.map(r => {
-        const iconMap = { video: "▶", article: "📄", playlist: "☰", inspiration: "🚀" };
+      const videoItems = section.resources.map(r => {
         const langBadge = r.lang ? `<span class="resource-lang">${r.lang}</span>` : "";
         return `
-          <a class="resource-item" href="${r.url}" target="_blank" rel="noopener">
-            <span class="resource-icon ${r.type}">${iconMap[r.type] || "🔗"}</span>
-            <span class="resource-title">${r.title}</span>
+          <a class="video-item" href="${r.url}" target="_blank" rel="noopener">
+            <span class="video-item-icon">▶</span>
+            <div class="video-item-info">
+              <div class="video-item-title">${r.title}</div>
+              ${r.duration ? `<div class="video-item-meta">${r.duration}</div>` : ""}
+            </div>
             ${langBadge}
           </a>
         `;
       }).join("");
-      resourcesHTML = `
-        <div class="resources-section">
-          <h4>📚 Learning Resources — Watch, Read & Get Inspired</h4>
-          <div class="resource-list">${items}</div>
+
+      videosHTML = `
+        <div class="video-support">
+          <div class="video-support-header">
+            <h4>🎬 Video Support <span class="vs-badge">Optional</span></h4>
+            <span class="vs-chevron">▼</span>
+          </div>
+          <div class="video-support-body">
+            ${videoItems}
+          </div>
         </div>
       `;
     }
@@ -340,7 +446,7 @@
     const quizBtnText = quizScore !== undefined ? `Retake Quiz (Best: ${quizScore}%)` : "Take Quiz";
 
     const markReadBtn = weekProgress.contentRead
-      ? `<span style="color:var(--green);font-size:13px;font-weight:600">✓ Content reviewed</span>`
+      ? `<span class="content-read-mark">✓ Content reviewed</span>`
       : `<button class="btn-secondary btn-mark-complete" data-week="${section.id}">Mark Content as Read</button>`;
 
     return `
@@ -356,8 +462,8 @@
         <div class="section-detail hidden">
           ${motivationHTML}
           ${daysHTML}
-          ${resourcesHTML}
-          <div style="display:flex;align-items:center;gap:12px;margin-top:20px;flex-wrap:wrap;">
+          ${videosHTML}
+          <div class="section-actions">
             ${markReadBtn}
             <button class="btn-primary btn-quiz" data-week="${section.id}">📝 ${quizBtnText}</button>
           </div>
@@ -367,7 +473,7 @@
   }
 
   // ═══════════════════════════════════════
-  // QUIZ ENGINE
+  // QUIZ ENGINE (unchanged)
   // ═══════════════════════════════════════
   function startQuiz(weekId) {
     let section = null;
@@ -411,16 +517,14 @@
       </div>
     `;
 
-    // Remove existing overlay
     const existing = document.getElementById("quiz-overlay");
     if (existing) existing.remove();
 
     document.body.appendChild(overlay);
 
-    // Option click
     overlay.querySelectorAll(".quiz-option").forEach(opt => {
       opt.addEventListener("click", () => {
-        if (opt.closest(".quiz-options").querySelector(".correct, .incorrect")) return; // Already answered
+        if (opt.closest(".quiz-options").querySelector(".correct, .incorrect")) return;
 
         const selected = parseInt(opt.dataset.index);
         const correct = q.answer;
@@ -433,7 +537,6 @@
           document.getElementById("quiz-feedback").innerHTML = `<div class="quiz-feedback correct">✓ Correct!</div>`;
         } else {
           opt.classList.add("incorrect");
-          // Highlight correct
           overlay.querySelectorAll(".quiz-option")[correct].classList.add("correct");
           document.getElementById("quiz-feedback").innerHTML = `<div class="quiz-feedback incorrect">✗ Incorrect. The correct answer is ${letters[correct]}.</div>`;
         }
@@ -459,7 +562,6 @@
     const pct = Math.round((quiz.score / quiz.questions.length) * 100);
     const passed = pct >= PASS_THRESHOLD;
 
-    // Save
     const existing = getProgress();
     const prevBest = (existing.weeks || {})[quiz.section.id]?.quizScore || 0;
     const bestScore = Math.max(prevBest, pct);
@@ -512,17 +614,13 @@
   }
 
   // ═══════════════════════════════════════
-  // ADMIN DASHBOARD
+  // ADMIN DASHBOARD (unchanged)
   // ═══════════════════════════════════════
   function showDashboard() {
     const allProgress = getAllProgress();
-    const activities = JSON.parse(localStorage.getItem("scdc_activity") || "[]");
-
-    // If Firebase is available, also try to sync
     if (firebaseAvailable && db) {
       db.ref("progress").on("value", snapshot => {
         const fbData = snapshot.val() || {};
-        // Merge Firebase data into local
         const local = JSON.parse(localStorage.getItem("scdc_progress") || "{}");
         Object.keys(fbData).forEach(k => {
           if (!local[k] || new Date(fbData[k].lastActive) > new Date(local[k]?.lastActive || 0)) {
@@ -533,7 +631,6 @@
         renderDashboard();
       });
     }
-
     renderDashboard();
   }
 
@@ -563,13 +660,8 @@
           const w = weeks[s.id] || {};
           let cellClass = "not-started";
           let cellText = `W${s.week}`;
-          if (w.quizScore >= PASS_THRESHOLD) {
-            cellClass = "completed";
-            cellText += ` ✓`;
-          } else if (w.contentRead || w.quizScore !== undefined) {
-            cellClass = "in-progress";
-            cellText += ` …`;
-          }
+          if (w.quizScore >= PASS_THRESHOLD) { cellClass = "completed"; cellText += ` ✓`; }
+          else if (w.contentRead || w.quizScore !== undefined) { cellClass = "in-progress"; cellText += ` …`; }
           return `<div class="week-cell ${cellClass}">${cellText}</div>`;
         }).join("");
 
@@ -589,9 +681,7 @@
           `;
         }).join("");
 
-        const lastActive = trainee.lastActive
-          ? new Date(trainee.lastActive).toLocaleString()
-          : "Never";
+        const lastActive = trainee.lastActive ? new Date(trainee.lastActive).toLocaleString() : "Never";
 
         traineeCardsHTML += `
           <div class="trainee-card">
@@ -621,7 +711,6 @@
       });
     }
 
-    // Activity log
     const recentActivities = activities.slice(0, 20);
     let activityHTML = recentActivities.map(a => {
       const dotClass = a.type === "quiz" ? "quiz" : a.type === "login" ? "login" : "progress";
